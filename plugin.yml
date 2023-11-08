@@ -1,7 +1,7 @@
 ---
 name: PlasticSCM
-description: Checks out a PlasticSCM repository instead of a git repository.
-author: https://github.com/lightforgegames
+description: "Checks out a PlasticSCM repository instead of a git repository. Credits to LightForgeGames for the original plugin: https://github.com/lightforgegames"
+author: https://github.com/alta-vr
 requirements: []
 configuration:
   properties:
