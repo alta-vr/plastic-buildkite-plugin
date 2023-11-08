@@ -55,7 +55,7 @@ func getFriendlyBranchName(branchName string) (string, error) {
 }
 
 func getChangeset(branchName string) (int, error) {
-	revision := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_COMMIT")
+	revision := os.Getenv("BUILDKITE_COMMIT")
 	if revision == "" || revision == "HEAD" {
 		var err error
 		revision, err = getHead(branchName)
@@ -87,7 +87,7 @@ func getUpdateTarget() (string, error) {
 
 	// Figure out our metadata
 	// Start by getting the branch
-	branchName := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_BRANCH")
+	branchName := os.Getenv("BUILDKITE_BRANCH")
 
 	friendlyBranchName, err := getFriendlyBranchName(branchName)
 	if err != nil {
@@ -137,7 +137,7 @@ func main() {
 	fmt.Println("Executing plastic-buildkite-plugin from " + cd)
 
 	repoPath := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_REPO")
-	pipelineName := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_PIPELINE_NAME")
+	pipelineName := os.Getenv("BUILDKITE_PIPELINE_NAME")
 
 	workspaceName, found := os.LookupEnv("BUILDKITE_PLUGIN_PLASTIC_WORKSPACENAME")
 	if !found {
