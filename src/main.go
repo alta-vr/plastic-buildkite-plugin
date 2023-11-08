@@ -9,6 +9,27 @@ import (
 	"strings"
 )
 
+func setMetadata(name string, value string) (string, error) {
+	return "nothing", nil
+
+	//out, err := exec.Command("buildkite-agent", "meta-data", "set", name, value).CombinedOutput()
+	//return string(out), err
+}
+
+func getMetadata(name string, defaultValue string) (string, error) {
+	out, err := exec.Command("buildkite-agent", "meta-data", "get", name, "--default", defaultValue).CombinedOutput()
+	if err == nil {
+		return string(out), err
+	} else {
+		return "", err
+	}
+}
+
+func annotate(style, context, message string) error {
+	_, err := exec.Command("buildkite-agent", "annotate", message, "--context", context, "--style", style).CombinedOutput()
+	return err
+}
+
 func getHead(branch string) (string, error) {
 	out, err := exec.Command("cm", "find", "changeset", fmt.Sprintf(`where branch = '%s'`, branch), `--format={changesetid}`, "order", "by", "changesetId", "desc", "LIMIT", "1", "--nototal").CombinedOutput()
 	return strings.TrimSpace(string(out)), err
@@ -34,7 +55,7 @@ func getFriendlyBranchName(branchName string) (string, error) {
 }
 
 func getChangeset(branchName string) (int, error) {
-	revision := os.Getenv("BUILDKITE_COMMIT")
+	revision := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_COMMIT")
 	if revision == "" || revision == "HEAD" {
 		var err error
 		revision, err = getHead(branchName)
@@ -66,7 +87,7 @@ func getUpdateTarget() (string, error) {
 
 	// Figure out our metadata
 	// Start by getting the branch
-	branchName := os.Getenv("BUILDKITE_BRANCH")
+	branchName := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_BRANCH")
 
 	friendlyBranchName, err := getFriendlyBranchName(branchName)
 	if err != nil {
@@ -115,13 +136,8 @@ func main() {
 
 	fmt.Println("Executing plastic-buildkite-plugin from " + cd)
 
-	selectorString := ""
-	if _, err := os.Stat(".plastic/plastic.selector"); err == nil {
-		selectorString = "--selector=.plastic/plastic.selector"
-	}
-
-	repoPath := os.Getenv("BUILDKITE_REPO")
-	pipelineName := os.Getenv("BUILDKITE_PIPELINE_NAME")
+	repoPath := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_REPO")
+	pipelineName := os.Getenv("BUILDKITE_PLUGIN_PLASTIC_PIPELINE_NAME")
 
 	workspaceName, found := os.LookupEnv("BUILDKITE_PLUGIN_PLASTIC_WORKSPACENAME")
 	if !found {
@@ -129,7 +145,7 @@ func main() {
 	}
 
 	fmt.Printf("Creating workspace %q for repository %q\n", workspaceName, repoPath)
-	if out, err := exec.Command("cm", "workspace", "create", workspaceName, ".", selectorString).CombinedOutput(); err != nil {
+	if out, err := exec.Command("cm", "workspace", "create", workspaceName, ".", repoPath).CombinedOutput(); err != nil {
 		if !strings.Contains(string(out), "already exists.") {
 			exitAndError(fmt.Sprintf("Failed to create workspace `%s`: %v.\n%s\n", workspaceName, err, string(out)))
 		}
