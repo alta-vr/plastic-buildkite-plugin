@@ -34,8 +34,15 @@ func getHead(branch string) (string, error) {
 }
 
 func getComment(selector string) (string, error) {
+
+	if strings.Contains(selector, "sh:") {
+		//Shelves must be handled differently to changesets
+		out, err := exec.Command("cm", "find", "shelf", fmt.Sprintf(`where shelfiid = '%s'`, selector), `--format={comment}`, "order", "by", "changesetId", "desc", "LIMIT", "1", "--nototal").CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	} 
+
 	out, err := exec.Command("cm", "log", selector, "--csformat={comment}").CombinedOutput()
-	return strings.TrimSpace(string(out)), err
+	return strings.TrimSpace(string(out)), err	
 }
 
 func getFriendlyBranchName(branchName string) (string, error) {
@@ -77,10 +84,10 @@ func getUpdateTarget() (string, error) {
 	alreadyInitialised, _ := getMetadata("lightforge:plastic:initialised", "false")
 	if alreadyInitialised == "true" {
 		plasticBranch, _ := getMetadata("lightforge:plastic:branch", "")
-		plasticCs, _ := getMetadata("lightforge:plastic:changeset", "")
-		fmt.Printf("using br:%s and cs:%s from metadata\n", plasticBranch, plasticCs)
+		selector, _ := getMetadata("lightforge:plastic:selector", "")
+		fmt.Printf("using br:%s and %s from metadata\n", plasticBranch, selector)
 
-		return fmt.Sprintf("cs:%s", plasticCs), nil
+		return selector, nil
 	}
 
 	if _, err := setMetadata("lightforge:plastic:initialised", "true"); err != nil {
