@@ -10,10 +10,8 @@ import (
 )
 
 func setMetadata(name string, value string) (string, error) {
-	return "nothing", nil
-
-	//out, err := exec.Command("buildkite-agent", "meta-data", "set", name, value).CombinedOutput()
-	//return string(out), err
+	out, err := exec.Command("buildkite-agent", "meta-data", "set", name, value).CombinedOutput()
+	return string(out), err
 }
 
 func getMetadata(name string, defaultValue string) (string, error) {
@@ -35,39 +33,43 @@ func getHead(branch string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func getComment(changeset int) (string, error) {
-	out, err := exec.Command("cm", "log", fmt.Sprintf("cs:%d", changeset), "--csformat={comment}").CombinedOutput()
+func getComment(selector string) (string, error) {
+	out, err := exec.Command("cm", "log", selector, "--csformat={comment}").CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
 
 func getFriendlyBranchName(branchName string) (string, error) {
-	if strings.Contains(branchName, "-") {
-		return "", errors.New("dashes not allowed")
-	}
 
 	if strings.HasSuffix(branchName, "/") {
 		return "", errors.New("branch must not end with /")
 	}
 
 	branchName = strings.TrimPrefix(branchName, "/")
-	branchName = strings.Replace(branchName, "/", "-", -1)
+	branchName = strings.Replace(branchName, "/", "__", -1)
 	return branchName, nil
 }
 
-func getChangeset(branchName string) (int, error) {
+func getSelector(branchName string) (string, error) {
 	revision := os.Getenv("BUILDKITE_COMMIT")
 	if revision == "" || revision == "HEAD" {
 		var err error
 		revision, err = getHead(branchName)
 		if err != nil {
-			return -1, err
+			return fmt.Sprintf("cs:%d", revision), err
 		}
+
+		return revision, err;
+	}
+
+	if strings.Contains(revision, ":") {
+		//This adds support for specifying a shelf in the commit field (eg. sh:123)
+		return revision, nil
 	}
 
 	if cs, err := strconv.Atoi(revision); err != nil || cs < 1 {
-		return -1, err
+		return revision, err
 	} else {
-		return cs, nil
+		return fmt.Sprintf("cs:%d", cs), nil
 	}
 }
 
@@ -94,15 +96,15 @@ func getUpdateTarget() (string, error) {
 		return "", err
 	}
 
-	changeset, err := getChangeset(branchName)
+	selector, err := getSelector(branchName)
 	if err != nil {
-		return "", fmt.Errorf("Invalid changeset `%d` specified: %v\n", changeset, err)
+		return "", fmt.Errorf("Invalid selector `%d` specified: %v\n", selector, err)
 	}
 
 	// Set metadata before updating, as updating can take minutes.
-	comment, err := getComment(changeset)
+	comment, err := getComment(selector)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get comment for `%v:%s`\n%v\n%s\n", changeset, branchName, err, comment)
+		return "", fmt.Errorf("Failed to get comment for `%v:%s`\n%v\n%s\n", selector, branchName, err, comment)
 	}
 
 	if out, err := setMetadata("lightforge:plastic:branch", branchName); err != nil {
@@ -113,16 +115,16 @@ func getUpdateTarget() (string, error) {
 		return "", fmt.Errorf("Failed to set branch metadata: : %v.\n%s\n", err, string(out))
 	}
 
-	if out, err := setMetadata("lightforge:plastic:changeset", strconv.Itoa(changeset)); err != nil {
-		return "", fmt.Errorf("Failed to set changeset metadata: : %v.\n%s\n", err, string(out))
+	if out, err := setMetadata("lightforge:plastic:selector", selector); err != nil {
+		return "", fmt.Errorf("Failed to set selector metadata: : %v.\n%s\n", err, string(out))
 	}
 
-	commitMetadata := fmt.Sprintf("commit %d\n\n\t%s", changeset, comment)
+	commitMetadata := fmt.Sprintf("commit %d\n\n\t%s", selector, comment)
 	if out, err := setMetadata("buildkite:git:commit", commitMetadata); err != nil {
 		return "", fmt.Errorf("Failed to set buildkite:git:commit metadata: : %v.\n%s\n", err, string(out))
 	}
 
-	return fmt.Sprintf("cs:%d", changeset), nil
+	return selector, nil
 }
 
 func exitAndError(message string) {

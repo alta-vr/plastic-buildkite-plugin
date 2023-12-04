@@ -16,8 +16,6 @@ func Test_friendlyBranchName(t *testing.T) {
 		{"main/child succeeds", "main/child", "main-child", false},
 		{"/main/child_branch", "/main/child_branch", "main-child_branch", false},
 		{"main/child_branch", "main/child_branch", "main-child_branch", false},
-
-		{"invalid characters in branch", "main/with-dashes", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
