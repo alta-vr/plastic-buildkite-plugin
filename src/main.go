@@ -37,7 +37,7 @@ func getComment(selector string) (string, error) {
 
 	if strings.Contains(selector, "sh:") {
 		//Shelves must be handled differently to changesets
-		out, err := exec.Command("cm", "find", "shelve", fmt.Sprintf(`where shelveid = '%s'`, selector), `--format={comment}`, "LIMIT", "1", "--nototal").CombinedOutput()
+		out, err := exec.Command("cm", "find", "shelve", fmt.Sprintf(`where shelveid = '%s'`, strings.TrimPrefix(selector, "sh:")), `--format={comment}`, "LIMIT", "1", "--nototal").CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	} 
 
